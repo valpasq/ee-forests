@@ -1,0 +1,440 @@
+// DATASET EXPLORER
+// Last updated: November 22, 2021
+// BEN GLASS
+
+//==================
+//  CONFIG
+//================== 
+
+var utils = require('users/valeriepasquarella/ee-forests:utils.js');
+var config = require('users/valeriepasquarella/ee-forests:config.js');
+
+// Assets directory with tables by state.
+var TABLES_DIR = 'projects/ee-forests/assets/fpc_v2/fpc_v2-0_';
+
+// Constant to convert m2 to km2.
+var SCALE_FACTOR = 0.000001;
+
+// Output projection for reductions.
+var OUT_PROJ = 'EPSG:5070';
+
+//======================
+//  MASK PRE-PROCESSING
+//======================
+
+// Convert dictionary to feature collection.
+function dict_to_fc(key, value) {
+  return ee.Feature(null, value);
+}
+
+// Get CONUS bounds.
+var bounds = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017")
+    .filterMetadata('country_na', 'equals', 'United States');
+
+// Get summary dict from config.js.
+var summary_dict = config.SUMMARY_DICT;
+
+// Add additional properties to config dictionary.
+summary_dict = summary_dict
+    .map(utils.add_properties(bounds, SCALE_FACTOR, OUT_PROJ));
+
+// Convert to fc.
+var summary_fc = ee.FeatureCollection(
+    summary_dict.map(dict_to_fc).values());
+
+// Filter and mask by type.
+var categorical_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'categorical')
+    .map(utils.categorical_mask);
+var threshold_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'threshold')
+    .map(utils.threshold_mask); 
+var fractional_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'fractional')
+    .map(utils.fractional_mask); 
+    
+// Merge processed mask collections.
+var mask_collection = categorical_masks
+    .merge(threshold_masks)
+    .merge(fractional_masks);
+
+// Create final image collection with all masks. 
+var masks = mask_collection
+  .map(function(feature) {return ee.ImageCollection(feature
+      .get('mask_collection'))
+      .copyProperties(feature);
+  });
+
+//==================
+//  VIS PARAMS
+//==================
+
+// Colors for widget styling.
+var COLORS = {
+    forestgreen: '07783e',
+    offwhite: 'FFFAF1',
+    transparent: 'rgba(255, 255, 255, 0)',
+    semitransparent: 'rgba(255, 255, 255, 0.9)'
+};
+
+// Visualization parameters for mapped results.
+var FOREST_VIZ = {
+    min: 0,
+    max: 1, 
+    palette:[COLORS.offwhite, COLORS.forestgreen]
+};
+
+// Lable styling. 
+var BASIC_LABEL_STYLE = {
+    fontSize: '13px',
+    backgroundColor: COLORS.transparent
+};
+  
+var BOLD_LABEL_STYLE = {
+    fontWeight: 'bold',
+    fontSize: '14px',
+    backgroundColor: COLORS.transparent
+};
+
+var HEADER_LABEL_STYLE = {
+    fontWeight: 'bold',
+    fontSize: '18px',
+    backgroundColor: COLORS.transparent
+};
+
+//===================
+// INSTRUCTIONS PANEL
+//===================
+
+// Set up main panel (left-hand side of App).
+var master_panel = ui.Panel({
+  style: {
+      width: '25%',
+      backgroundColor: COLORS.semitransparent,
+      border: '2px solid #d3d3d3',
+      padding: '10px'
+  }
+});
+
+var master_panel_label = ui.Label({
+    value: 'Forest Dataset Explorer (Beta)',
+    style: HEADER_LABEL_STYLE
+});
+
+var instruct_label = ui.Label({
+    value: 'Compare forested-area (based on pixel counts) for CONUS from different ' +
+        'remote sensing datasets using the split panel and selection ' +
+        'widgets. Use pull-down below to chart how all forest datasets ' +
+        'differ over time for a specific state.',
+    style: BASIC_LABEL_STYLE
+});
+
+// Setup subpanel with options to select basemap style.
+var basemap_select_panel = ui.Panel({
+    style: {
+        position: 'middle-right',
+        backgroundColor: COLORS.semitransparent
+    },
+    layout: ui.Panel.Layout.flow('horizontal')
+});
+
+var basemap_label = ui.Label({
+    value: 'Basemap:',
+    style: BOLD_LABEL_STYLE
+});
+
+var dark_checkbox = ui.Checkbox({
+    label: 'Dark', 
+    value: true,
+    onChange: function(checked) {
+      if (checked === true) { 
+        LeftMap.setOptions('Dark', {Dark: stylers.dark_mode});
+        RightMap.setOptions('Dark', {Dark: stylers.dark_mode});
+        map_checkbox.setValue(false);
+        satellite_checkbox.setValue(false);
+      } else if ((map_checkbox.getValue() === false) & (satellite_checkbox.getValue() === false)) {
+        dark_checkbox.setValue(true);
+      }
+    }
+});
+
+var map_checkbox = ui.Checkbox({
+    label: 'Map', 
+    value: false,
+    onChange: function(checked) {
+      if (checked === true) { 
+        LeftMap.setOptions('ROADMAP');
+        RightMap.setOptions('ROADMAP');
+        dark_checkbox.setValue(false);
+        satellite_checkbox.setValue(false);
+      } else if ((dark_checkbox.getValue() === false) & (satellite_checkbox.getValue() === false)) {
+        map_checkbox.setValue(true);
+      }
+    }
+});
+
+var satellite_checkbox = ui.Checkbox({
+    label: 'Satellite', 
+    value: false,
+    onChange: function(checked) {
+      if (checked === true) { 
+        LeftMap.setOptions('SATELLITE');
+        RightMap.setOptions('SATELLITE');
+        map_checkbox.setValue(false);
+        dark_checkbox.setValue(false);
+      } else if ((dark_checkbox.getValue() === false) & (map_checkbox.getValue() === false)) {
+        satellite_checkbox.setValue(true);
+      }
+    }
+});
+
+basemap_select_panel
+    .add(basemap_label)
+    .add(dark_checkbox)
+    .add(map_checkbox)
+    .add(satellite_checkbox);
+
+master_panel
+    .add(master_panel_label)
+    .add(instruct_label)
+    .add(basemap_select_panel);
+
+//=======================
+//  CHART WIDGET
+//=======================
+
+var chart_panel = ui.Panel({
+      style: {
+        height: '400px',
+        position: 'bottom-left',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)'
+      }
+});
+
+var chart_palette = summary_dict
+    .map(function(k, v) {return ee.Dictionary(v).get('color')})
+    .values()
+    .getInfo();
+
+function years_dict(start_inc, end_inc) {
+  var out = {};
+  for (var i = start_inc; i <= end_inc; ++i) {
+    out[i] = i; 
+  }
+  return out;
+}
+var chart_xlabels = years_dict(1985, 2020);
+
+var chart_select_panel = ui.Panel({
+  layout: ui.Panel.Layout.flow('horizontal')
+});
+
+var chart_select_label = ui.Label({
+  value: 'Forest area chart:',
+  style: BOLD_LABEL_STYLE
+});
+
+// Create time series chart for selected state
+var select_button = ui.Select({
+  items: Object.keys(config.DICT_STATES),
+  placeholder: 'Select state',
+  style: {stretch: 'horizontal'},
+  onChange: function(key) {
+    var state = config.DICT_STATES[key];
+    
+    var FCP_table = ee.FeatureCollection(TABLES_DIR + state)
+        .sort('product_id');
+
+    // Add "dummy" column to feature collection.
+    var addDummy = function(feature) {
+      return feature.set({0: 0});
+    };
+    FCP_table = FCP_table.map(addDummy);
+    
+    var FCP_chart = ui.Chart.feature
+                        .byProperty({
+                            features: FCP_table,
+                            xProperties: chart_xlabels,
+                            seriesProperty: 'product_id'
+                        })
+                        .setChartType('ScatterChart');
+    
+    var FCP_chart_styling = {
+        hAxis: {
+            title: 'Year',
+            ticks: chart_xlabels,
+            titleTextStyle: {italic: false, bold: false},
+            gridlines: {color: 'DEDEDE'},
+            format: '####'
+        },
+        vAxis: {
+            title: 'Area based on pixel counts (Km^2)',
+            titleTextStyle: {italic: false, bold: false},
+            gridlines: {color: 'DEDEDE'},
+            format: '#####'
+        },
+        colors: chart_palette,
+        lineSize: 3,
+        pointSize: 3,
+        width: 1000,
+        height: 400,
+        padding: '0px',
+        margin: '0px',
+        interpolateNulls: true,
+        chartArea: {backgroundColor: 'rgba(255, 255, 255, 0.9)'}
+    };
+
+    FCP_chart.setOptions(FCP_chart_styling);
+
+    chart_panel.clear();
+    chart_panel.add(FCP_chart);
+  }
+});
+
+chart_select_panel.add(chart_select_label).add(select_button);
+
+// Add chart widgets to master panel.
+master_panel.add(chart_select_panel);
+master_panel.add(chart_panel);
+
+// Add citation for app.
+var citation_label = ui.Label({
+    value: 'Research and UI Development by Ben Glass and Valerie Pasquarella. ' + 
+    'Version 2.0. November 2021.',
+    style: BASIC_LABEL_STYLE
+});
+
+master_panel.add(citation_label);
+
+
+//==========================
+// PRODUCT SELECTION WIDGETS
+//==========================
+
+function select_year(product_key, map_panel, years_dict) {
+  return function(year_key) {
+    // Reset layers
+    map_panel.layers().reset();
+    
+    var PRODUCT_ID = product_key;
+    var YEAR = years_dict.get(year_key);
+    
+    var masks_filt = ee.ImageCollection(masks
+        .filterMetadata('product_id', 'equals', PRODUCT_ID)
+        .first())
+        .filterMetadata('year', 'equals', YEAR)
+        .first();
+    
+    // Add product for selected year.
+    map_panel.addLayer(masks_filt, FOREST_VIZ, PRODUCT_ID + ' (' + YEAR + ')', 1);
+  };
+}
+
+function select_dataset(select_dataset_button, ui_panel, map_panel) {
+  return function(product_key) {
+    
+    var product_dict = ee.Dictionary(summary_dict.get(product_key));
+    
+    // Get available years for selected product.
+    var years_list = product_dict.get('years');
+    
+    // Wrangling.
+    var years_string = ee.List(years_list).map(function(year) {
+      return(ee.String(year));
+    });
+    var years_dict = ee.Dictionary.fromLists(years_string, years_list);
+    
+    // Get dataset description.
+    var dataset_description = ui.Label({
+        value: product_dict.get('description').getInfo(),
+        style: BASIC_LABEL_STYLE
+    });
+    
+    // Put the available years in a nested select button.
+    var select_year_button = ui.Select({
+        items: Object.keys(years_dict.getInfo()),
+        placeholder: 'Choose year available',
+        onChange: select_year(product_key, map_panel, years_dict)
+    });
+      
+    // Clear panel for new searches.
+    ui_panel.clear();
+    ui_panel.add(select_dataset_button);
+    ui_panel.add(select_year_button);
+    ui_panel.add(dataset_description);
+  };
+}
+
+// Function to build dataset selection panels.
+function build_dataset_panel(panel_name, map_panel, panel_location) {
+  var dataset_panel_label = ui.Label({
+      value: panel_name,
+      style: BOLD_LABEL_STYLE
+  });
+  
+  var dataset_panel = ui.Panel({
+    style: {
+        width: '210px',
+        position: panel_location,
+        backgroundColor: COLORS.semitransparent
+    }
+  });
+  
+  map_panel.add(dataset_panel.add(dataset_panel_label));
+  
+  var select_dataset_button = ui.Select({
+      items: Object.keys(summary_dict.getInfo()),
+      placeholder: 'Choose dataset',
+  });
+  
+  select_dataset_button
+      .onChange(select_dataset(select_dataset_button, dataset_panel, map_panel));
+  
+  return dataset_panel.add(select_dataset_button);
+}
+
+// Initialize left and right maps for split panel.
+var RightMap = ui.Map();
+var LeftMap = ui.Map();
+
+// Generate selection panels for right and left maps panels.
+build_dataset_panel('Left panel select:', LeftMap, 'middle-left');
+build_dataset_panel('Right panel select:', RightMap, 'middle-right');
+
+//=======================================
+//  LINKING MASTER PANEL AND SPLIT PANELS
+//=======================================
+
+// Link the right and left Maps.
+var linker = ui.Map.Linker([LeftMap, RightMap]);
+
+// Create a SplitPanel which holds the linked maps side-by-side.
+var splitPanel = ui.SplitPanel({
+    firstPanel: linker.get(0),
+    secondPanel: linker.get(1),
+    orientation: 'horizontal',
+    wipe: true,
+    style: {stretch: 'both'}
+});
+
+// Add "dark mode" basemap style.
+var stylers = require('users/valeriepasquarella/shared:map_stylers');
+LeftMap.setOptions('Dark', {Dark: stylers.dark_mode});
+RightMap.setOptions('Dark', {Dark: stylers.dark_mode});
+
+// Set Map controls.
+var MAP_CONTROL_DICT = {
+    zoomControl: true,
+    mapTypeControl: false,
+    drawingToolsControl: false,
+    layerList: false,
+    fullscreenControl: true
+};
+
+RightMap.setControlVisibility(MAP_CONTROL_DICT);
+LeftMap.setControlVisibility(MAP_CONTROL_DICT);
+
+// Set the SplitPanel as the only thing in root.
+ui.root.clear();
+ui.root.insert(0, master_panel);
+ui.root.insert(1, splitPanel);

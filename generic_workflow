@@ -1,0 +1,173 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-99.5505859375, 37.14691772900527],
+          [-99.5505859375, 25.308969925079772],
+          [-92.87089843750002, 25.308969925079772],
+          [-92.87089843750002, 37.14691772900527]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var utils = require('users/valeriepasquarella/forest_product_comparison:v2/utils.js');
+var config = require('users/valeriepasquarella/forest_product_comparison:v2/config.js');
+
+// Import datasets.
+var TIGER = ee.FeatureCollection('TIGER/2018/States');
+
+// Area to summarize over (list of states).
+// Note: Texas is divided into TX-1 and TX-2.
+var STATE = 'TX-2';
+var VERSION = 'v2-0';
+
+// Constant to convert m2 to km2
+var SCALE_FACTOR = 0.000001;
+
+// Output projection for reductions.
+var OUT_PROJ = 'EPSG:5070';
+
+// Get state(s) to reduce over.
+if (STATE === 'TX-1') {
+  var bounds = ee.FeatureCollection(ee.Feature(TIGER
+      .filter(ee.Filter.inList('STUSPS', ['TX']))
+      .first())
+      .intersection(geometry, 1));
+} else if (STATE === 'TX-2') {
+  var bounds = ee.FeatureCollection(ee.Feature(TIGER
+      .filter(ee.Filter.inList('STUSPS', ['TX']))
+      .first())
+      .difference(geometry, 1));
+} else {
+  var bounds = TIGER
+      .filter(ee.Filter.inList('STUSPS', [STATE]));
+}
+
+Map.addLayer(bounds);
+
+// Get summary dict from config.
+var summary_dict = config.SUMMARY_DICT;
+
+// Convert dictionary to feature collection.
+function dict_to_fc(key, value) {
+  return ee.Feature(null, value);
+  
+}
+
+// Run forest area summaries for ROI.
+function summary_table_fn(feature) {
+  var mask_collection = ee.ImageCollection(
+      feature.get('mask_collection'));
+      
+  var bounds = ee.FeatureCollection(feature.get('bounds')).geometry();
+  var proj = ee.Projection(feature.get('projection'));
+  var pixel_size = feature.getNumber('pixel_size');
+  var conversion = feature.getNumber('conversion');
+  var product = feature.get('product_id');
+  
+  var summaries = mask_collection.map(function(image) { 
+    var summary = ee.Image(image)
+        .reduceRegion({
+            reducer: ee.Reducer.sum(),
+            geometry: bounds,
+            crs: proj,
+            scale: pixel_size,
+            maxPixels: 1e20});
+            
+    var area_int = ee.Number(summary.get('forest_area'))
+        .multiply(conversion)
+        .int();
+    
+    summary = summary.set('forest_area', area_int);
+    
+    return ee.Feature(null, summary)
+        .setMulti({
+          'product_id': product,
+          'year': image.get('year')
+          });
+  });
+  
+  return ee.Feature(
+      null, 
+      {'product_id': product, 
+       'year_summaries': ee.FeatureCollection(summaries)});
+}
+
+// Format feature collection for export.
+function featurify_fn(f) {
+  f = ee.Feature(f);
+  var product_id = f.getString('product_id');
+  var summaries = ee.FeatureCollection(f.get('year_summaries'));
+  var summaries_w_string_year = summaries.map(function(summary) {
+        return summary.set('year', ee.String(summary.getNumber('year').toInt()));
+      });
+  
+  var years = summaries_w_string_year.aggregate_array('year');
+  var areas = summaries_w_string_year.aggregate_array('forest_area');
+  var properties = ee.Dictionary.fromLists(years, areas);
+  
+  return ee.Feature(
+      bounds.geometry(), 
+      properties
+          .set('product_id', product_id)
+          .set('state', STATE));
+}
+
+// Add additional properties to config dictionary.
+summary_dict = summary_dict
+    .map(utils.add_properties(bounds, SCALE_FACTOR, OUT_PROJ));
+
+// Convert to fc
+var summary_fc = ee.FeatureCollection(
+    summary_dict.map(dict_to_fc).values());
+
+// Filter and mask by type.
+var categorical_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'categorical')
+    .map(utils.categorical_mask);
+  
+var threshold_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'threshold')
+    .map(utils.threshold_mask); 
+
+var fractional_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'fractional')
+    .map(utils.fractional_mask); 
+
+// Create collection of masks.
+var mask_collection = categorical_masks
+    .merge(threshold_masks)
+    .merge(fractional_masks);
+
+// Get summaries and format for export.
+var products_by_year = mask_collection
+    .map(summary_table_fn)
+    .map(featurify_fn);
+
+
+// --------------------- EXPORTS ---------------------
+var YEAR_FIRST = 1985;
+var YEAR_LAST = 2020;
+
+var selectors = ['product_id', 'state'];
+for (var i = YEAR_FIRST; i <= YEAR_LAST; ++i) {
+  selectors.push(i.toString()); 
+}
+
+Export.table.toDrive({
+    collection: products_by_year,
+    selectors: selectors,
+    description: 'exportTable_toDrive_' + STATE ,
+    folder: 'ee-fpc',
+    fileNamePrefix: 'fpc_' + VERSION + '_' + STATE,
+});
+
+Export.table.toAsset({
+    collection: products_by_year,
+    description: 'exportTable_toAsset_' + STATE ,
+    assetId: 'fpc_' + VERSION + '_' + STATE,
+});
+
