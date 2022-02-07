@@ -1,3 +1,5 @@
+// Utility functions for ee-forests analysis.
+
 function categorical_mask(feature) {
     var image_collection = ee.ImageCollection(
           feature.get('collection'));

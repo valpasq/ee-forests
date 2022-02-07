@@ -1,22 +1,30 @@
 // DATASET EXPLORER
-// Last updated: November 22, 2021
-// BEN GLASS
+// Last updated: 2022-01-07
+// BEN GLASS, VALERIE PASQUARELLA
 
 //==================
 //  CONFIG
 //================== 
 
 var utils = require('users/valeriepasquarella/ee-forests:utils.js');
-var config = require('users/valeriepasquarella/ee-forests:config.js');
+var config = require('users/valeriepasquarella/forest_product_comparison:v3/config.js');
+
+var FIA_config = ee.Dictionary({
+  'FIA_forest' : {color: '666666'},
+  'FIA_timberland': {color: 'B7B7B7'}
+});
 
 // Assets directory with tables by state.
-var TABLES_DIR = 'projects/ee-forests/assets/fpc_v2/fpc_v2-0_';
+var TABLES_DIR = 'projects/ee-forests/assets/v3-1_merged/v3-1_merged_';
 
 // Constant to convert m2 to km2.
 var SCALE_FACTOR = 0.000001;
 
 // Output projection for reductions.
 var OUT_PROJ = 'EPSG:5070';
+
+// State boundaries asset.
+var TIGER = 'TIGER/2018/States';
 
 //======================
 //  MASK PRE-PROCESSING
@@ -212,6 +220,7 @@ var chart_panel = ui.Panel({
 });
 
 var chart_palette = summary_dict
+    .combine(FIA_config)
     .map(function(k, v) {return ee.Dictionary(v).get('color')})
     .values()
     .getInfo();
@@ -242,6 +251,10 @@ var select_button = ui.Select({
   onChange: function(key) {
     var state = config.DICT_STATES[key];
     
+    var bounds = ee.FeatureCollection(TIGER)
+        .filter(ee.Filter.inList('STUSPS', [state]));
+    LeftMap.centerObject(bounds);
+    
     var FCP_table = ee.FeatureCollection(TABLES_DIR + state)
         .sort('product_id');
 
@@ -249,7 +262,8 @@ var select_button = ui.Select({
     var addDummy = function(feature) {
       return feature.set({0: 0});
     };
-    FCP_table = FCP_table.map(addDummy);
+    FCP_table = FCP_table
+        .map(addDummy);
     
     var FCP_chart = ui.Chart.feature
                         .byProperty({
@@ -260,6 +274,7 @@ var select_button = ui.Select({
                         .setChartType('ScatterChart');
     
     var FCP_chart_styling = {
+        title: ee.String(key).getInfo(),
         hAxis: {
             title: 'Year',
             ticks: chart_xlabels,
@@ -268,7 +283,7 @@ var select_button = ui.Select({
             format: '####'
         },
         vAxis: {
-            title: 'Area based on pixel counts (Km^2)',
+            title: 'Area based on pixel counts (sq. meters)',
             titleTextStyle: {italic: false, bold: false},
             gridlines: {color: 'DEDEDE'},
             format: '#####'
@@ -300,7 +315,7 @@ master_panel.add(chart_panel);
 // Add citation for app.
 var citation_label = ui.Label({
     value: 'Research and UI Development by Ben Glass and Valerie Pasquarella. ' + 
-    'Version 2.0. November 2021.',
+    'Version 3.1. January 2022.',
     style: BASIC_LABEL_STYLE
 });
 

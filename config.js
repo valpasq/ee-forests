@@ -122,18 +122,25 @@ var SUMMARY_DICT = {
         'year_fn': set_year_from_id(2),
         'color': '#CF9FFF'
     },
-    'LCMAP_lcpri_trees_and_wetland': {
-        'description': 'LCMAP LCPRI product. Selected product classes are ' +
-            'trees (4) and wetland (6).',
+    'LCMAP_lcpri_trees_and_lcpri_wetland_lcsec_trees': {
+        'description': 'LCMAP primary and secondary. Selected product classes are ' +
+            'trees (4) LCPRI or wetland (6) from LCPRI and trees (4) from LCSEC.',
         'source': 
-            ee.ImageCollection('projects/sat-io/open-datasets/LCMAP/LCPRI'),
+            ee.ImageCollection('projects/sat-io/open-datasets/LCMAP/LCPRI')
+                .map(function(img) {
+                    var img2 = ee.ImageCollection('projects/sat-io/open-datasets/LCMAP/LCSEC')
+                        .filter(ee.Filter.date(img.date()))
+                        .first();
+                    var mask_pri = img.eq(4).unmask();
+                    var mask_sec = img.eq(6).and(img2.eq(4)).unmask();
+                  return ee.Image(mask_pri.add(mask_sec).gt(0))}),
         'band': 'b1',
         'pixel_size': 30,
         'map_mode': 'categorical',
-        'classes': [4, 6],
+        'classes': [1],
         'years': range(1985, 2019),
         'year_fn': set_year_from_id(2),
-        'color': '#DA70D6'
+        'color': '#CC3CC7'
     },
     'LCMS_lc_trees': {
         'description': 'LCMS landcover product. Selected product class is trees (1).',
@@ -205,7 +212,7 @@ var SUMMARY_DICT = {
         'classes': [2],
         'years': [2020],
         'year_fn': function(image) { return image.set('year', 2020); },
-        'color': '#000000'
+        'color': '#FF8C00'
     },
     'ESA_trees': {
         'description': 'ESA WorldCover Landcover product. Selected product ' +
@@ -218,7 +225,7 @@ var SUMMARY_DICT = {
         'classes': [10],
         'years': [2020],
         'year_fn': function(image) { return image.set('year', 2020); },
-        'color': '#7F7F7F'
+        'color': '#FF7F50'
     },
     'MODIS_lc_Type1': {
         'description': 'MODIS LC_Type1 product. Selected forest product ' +
