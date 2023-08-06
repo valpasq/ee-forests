@@ -1,30 +1,34 @@
-// DATASET EXPLORER
-// Last updated: 2022-01-07
+// DATASET EXPLORER (v5)
+// Last updated: 2023-07-04
 // BEN GLASS, VALERIE PASQUARELLA
 
 //==================
 //  CONFIG
 //================== 
 
-var utils = require('users/valeriepasquarella/ee-forests:utils.js');
-var config = require('users/valeriepasquarella/forest_product_comparison:v3/config.js');
+var CITATION_LABEL = 'Research and UI Development by Ben Glass and Valerie Pasquarella. ' + 
+    'Version 5.0, July 2023.';
 
-var FIA_config = ee.Dictionary({
-  'FIA_forest' : {color: '666666'},
-  'FIA_timberland': {color: 'B7B7B7'}
-});
+var utils = require('users/valeriepasquarella/ee-forests:utils.js');
+var config = require('users/valeriepasquarella/ee-forests:config.js');
 
 // Assets directory with tables by state.
-var TABLES_DIR = 'projects/ee-forests/assets/v3-1_merged/v3-1_merged_';
+var TABLES_DIR = 'projects/ee-forests/assets/v5-0_merged/v5-0_merged_';
 
-// Constant to convert m2 to km2.
-var SCALE_FACTOR = 0.000001;
+// Collection with pre-computed forest masks.
+var MASK_COLLECTION_ID = 'projects/sites-project/forest-dataset-comparison/v5-0_datasets';
+
+// Multiply by m2.
+var SCALE_FACTOR = 1;
 
 // Output projection for reductions.
 var OUT_PROJ = 'EPSG:5070';
 
 // State boundaries asset.
 var TIGER = 'TIGER/2018/States';
+
+// Get visualization properties for additional FIA datasets.
+var FIA_config = config.FIA_DICT;
 
 //======================
 //  MASK PRE-PROCESSING
@@ -35,43 +39,15 @@ function dict_to_fc(key, value) {
   return ee.Feature(null, value);
 }
 
-// Get CONUS bounds.
-var bounds = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017")
-    .filterMetadata('country_na', 'equals', 'United States');
-
 // Get summary dict from config.js.
 var summary_dict = config.SUMMARY_DICT;
-
-// Add additional properties to config dictionary.
-summary_dict = summary_dict
-    .map(utils.add_properties(bounds, SCALE_FACTOR, OUT_PROJ));
 
 // Convert to fc.
 var summary_fc = ee.FeatureCollection(
     summary_dict.map(dict_to_fc).values());
 
-// Filter and mask by type.
-var categorical_masks = summary_fc
-    .filterMetadata('map_mode', 'equals', 'categorical')
-    .map(utils.categorical_mask);
-var threshold_masks = summary_fc
-    .filterMetadata('map_mode', 'equals', 'threshold')
-    .map(utils.threshold_mask); 
-var fractional_masks = summary_fc
-    .filterMetadata('map_mode', 'equals', 'fractional')
-    .map(utils.fractional_mask); 
-    
-// Merge processed mask collections.
-var mask_collection = categorical_masks
-    .merge(threshold_masks)
-    .merge(fractional_masks);
-
-// Create final image collection with all masks. 
-var masks = mask_collection
-  .map(function(feature) {return ee.ImageCollection(feature
-      .get('mask_collection'))
-      .copyProperties(feature);
-  });
+// Get IC with mask results (pre-computed).
+var masks = ee.ImageCollection(MASK_COLLECTION_ID);
 
 //==================
 //  VIS PARAMS
@@ -89,7 +65,7 @@ var COLORS = {
 var FOREST_VIZ = {
     min: 0,
     max: 1, 
-    palette:[COLORS.offwhite, COLORS.forestgreen]
+    palette:['000000', COLORS.forestgreen]
 };
 
 // Lable styling. 
@@ -130,7 +106,7 @@ var master_panel_label = ui.Label({
 });
 
 var instruct_label = ui.Label({
-    value: 'Compare forested-area (based on pixel counts) for CONUS from different ' +
+    value: 'Compare forested area (based on pixel counts) for CONUS from different ' +
         'remote sensing datasets using the split panel and selection ' +
         'widgets. Use pull-down below to chart how all forest datasets ' +
         'differ over time for a specific state.',
@@ -245,18 +221,37 @@ var chart_select_label = ui.Label({
 
 // Create time series chart for selected state
 var select_button = ui.Select({
-  items: Object.keys(config.DICT_STATES),
+  items: Object.keys(config.STATES_DICT),
   placeholder: 'Select state',
   style: {stretch: 'horizontal'},
   onChange: function(key) {
-    var state = config.DICT_STATES[key];
+    var state = config.STATES_DICT[key];
+
+    if (state !== 'CONUS') {
+      var bounds = ee.FeatureCollection(TIGER)
+          .filter(ee.Filter.inList('STUSPS', [state]));
+  
+      var FCP_table = ee.FeatureCollection(TABLES_DIR + state)
+        .sort('dataset_id');
+        
+      LeftMap.centerObject(bounds);
+    }
+    else {
+      var conus = Object.keys(config.STATES_DICT).map(function(key){
+          return config.STATES_DICT[key];});
+          
+      var bounds = ee.FeatureCollection(TIGER)
+        .filter(ee.Filter.inList('STUSPS', conus))
+      
+      var FCP_table = ee.FeatureCollection(TABLES_DIR + 'CONUS_noFIA')
+        .sort('dataset_id');
+      
+      LeftMap.setCenter(-98.55653, 39.80988, 4);
+    }
     
-    var bounds = ee.FeatureCollection(TIGER)
-        .filter(ee.Filter.inList('STUSPS', [state]));
-    LeftMap.centerObject(bounds);
+    LeftMap.layers().set(1, ui.Map.Layer(ee.Image().paint(bounds, 0, 2), {palette: ['white']}));
+    RightMap.layers().set(1, ui.Map.Layer(ee.Image().paint(bounds, 0, 2), {palette: ['white']}));
     
-    var FCP_table = ee.FeatureCollection(TABLES_DIR + state)
-        .sort('product_id');
 
     // Add "dummy" column to feature collection.
     var addDummy = function(feature) {
@@ -269,7 +264,7 @@ var select_button = ui.Select({
                         .byProperty({
                             features: FCP_table,
                             xProperties: chart_xlabels,
-                            seriesProperty: 'product_id'
+                            seriesProperty: 'dataset_id'
                         })
                         .setChartType('ScatterChart');
     
@@ -303,6 +298,7 @@ var select_button = ui.Select({
 
     chart_panel.clear();
     chart_panel.add(FCP_chart);
+    add_reset_button(chart_panel, 'bottom-left', 1);
   }
 });
 
@@ -314,8 +310,7 @@ master_panel.add(chart_panel);
 
 // Add citation for app.
 var citation_label = ui.Label({
-    value: 'Research and UI Development by Ben Glass and Valerie Pasquarella. ' + 
-    'Version 3.1. January 2022.',
+    value: CITATION_LABEL,
     style: BASIC_LABEL_STYLE
 });
 
@@ -323,35 +318,36 @@ master_panel.add(citation_label);
 
 
 //==========================
-// PRODUCT SELECTION WIDGETS
+// DATASET SELECTION WIDGETS
 //==========================
 
-function select_year(product_key, map_panel, years_dict) {
+function select_year(dataset_key, map_panel, years_dict) {
   return function(year_key) {
     // Reset layers
-    map_panel.layers().reset();
+    map_panel.layers().set(0, null);
     
-    var PRODUCT_ID = product_key;
+    var DATASET_ID = dataset_key;
     var YEAR = years_dict.get(year_key);
     
-    var masks_filt = ee.ImageCollection(masks
-        .filterMetadata('product_id', 'equals', PRODUCT_ID)
-        .first())
-        .filterMetadata('year', 'equals', YEAR)
-        .first();
-    
-    // Add product for selected year.
-    map_panel.addLayer(masks_filt, FOREST_VIZ, PRODUCT_ID + ' (' + YEAR + ')', 1);
+    var masks_filt = ee.ImageCollection(masks)
+        .filterMetadata('dataset_id', 'equals', DATASET_ID)
+        .filterMetadata('year', 'equals', ee.String(YEAR))
+        .first()
+        .selfMask();
+
+    // Add dataset for selected year.
+    map_panel.layers().set(0, ui.Map.Layer(masks_filt, FOREST_VIZ, DATASET_ID + ' (' + YEAR + ')', 1));
   };
 }
 
 function select_dataset(select_dataset_button, ui_panel, map_panel) {
-  return function(product_key) {
+  return function(dataset_key) {
+    map_panel.layers().set(0, null);
     
-    var product_dict = ee.Dictionary(summary_dict.get(product_key));
+    var dataset_dict = ee.Dictionary(summary_dict.get(dataset_key));
     
-    // Get available years for selected product.
-    var years_list = product_dict.get('years');
+    // Get available years for selected dataset.
+    var years_list = dataset_dict.get('years');
     
     // Wrangling.
     var years_string = ee.List(years_list).map(function(year) {
@@ -361,7 +357,7 @@ function select_dataset(select_dataset_button, ui_panel, map_panel) {
     
     // Get dataset description.
     var dataset_description = ui.Label({
-        value: product_dict.get('description').getInfo(),
+        value: dataset_dict.get('description').getInfo(),
         style: BASIC_LABEL_STYLE
     });
     
@@ -369,7 +365,7 @@ function select_dataset(select_dataset_button, ui_panel, map_panel) {
     var select_year_button = ui.Select({
         items: Object.keys(years_dict.getInfo()),
         placeholder: 'Choose year available',
-        onChange: select_year(product_key, map_panel, years_dict)
+        onChange: select_year(dataset_key, map_panel, years_dict)
     });
       
     // Clear panel for new searches.
@@ -377,16 +373,13 @@ function select_dataset(select_dataset_button, ui_panel, map_panel) {
     ui_panel.add(select_dataset_button);
     ui_panel.add(select_year_button);
     ui_panel.add(dataset_description);
+
   };
 }
 
 // Function to build dataset selection panels.
-function build_dataset_panel(panel_name, map_panel, panel_location) {
-  var dataset_panel_label = ui.Label({
-      value: panel_name,
-      style: BOLD_LABEL_STYLE
-  });
-  
+function build_dataset_panel(map_panel, panel_location) {
+
   var dataset_panel = ui.Panel({
     style: {
         width: '210px',
@@ -395,7 +388,7 @@ function build_dataset_panel(panel_name, map_panel, panel_location) {
     }
   });
   
-  map_panel.add(dataset_panel.add(dataset_panel_label));
+  map_panel.add(dataset_panel);
   
   var select_dataset_button = ui.Select({
       items: Object.keys(summary_dict.getInfo()),
@@ -412,9 +405,30 @@ function build_dataset_panel(panel_name, map_panel, panel_location) {
 var RightMap = ui.Map();
 var LeftMap = ui.Map();
 
+
+function add_reset_button(map_panel, button_location, layer_index) { 
+  var reset_button = ui.Button({
+      label: 'Clear',
+      style: {
+        position: button_location,
+        backgroundColor: COLORS.transparent
+      },
+      onClick: function() {
+        map_panel.layers().set(layer_index, null);
+        map_panel.remove(map_panel.widgets().get(1));
+        build_dataset_panel(map_panel, button_location);
+      }
+  });
+  return map_panel.add(reset_button);
+}
+
+add_reset_button(LeftMap, 'bottom-left', 0);
+add_reset_button(RightMap, 'bottom-right', 0);
+
 // Generate selection panels for right and left maps panels.
-build_dataset_panel('Left panel select:', LeftMap, 'middle-left');
-build_dataset_panel('Right panel select:', RightMap, 'middle-right');
+build_dataset_panel(LeftMap, 'bottom-left');
+build_dataset_panel(RightMap, 'bottom-right');
+
 
 //=======================================
 //  LINKING MASTER PANEL AND SPLIT PANELS
@@ -436,6 +450,9 @@ var splitPanel = ui.SplitPanel({
 var stylers = require('users/valeriepasquarella/shared:map_stylers');
 LeftMap.setOptions('Dark', {Dark: stylers.dark_mode});
 RightMap.setOptions('Dark', {Dark: stylers.dark_mode});
+
+LeftMap.layers().set(0, null);
+RightMap.layers().set(0, null);
 
 // Set Map controls.
 var MAP_CONTROL_DICT = {

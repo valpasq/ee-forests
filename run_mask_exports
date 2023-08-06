@@ -1,0 +1,138 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var conus = ee.FeatureCollection("projects/ee-forests/assets/LSIB_SIMPLE_2017_CONUS");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// DATA EXPORTS FOR CONUS
+// Last updated: 2023-06-28
+
+//==================
+//  CONFIG
+//================== 
+
+var OUTPUT_COLLECTION = 'projects/sites-project/forest-dataset-comparison/v5-0_datasets/';
+
+var utils = require('users/valeriepasquarella/ee-forests:utils.js');
+var config = require('users/valeriepasquarella/ee-forests:config.js');
+
+// Multiply by m2.
+var SCALE_FACTOR = 1;
+
+// Output projection for reductions.
+var OUT_PROJ = 'EPSG:5070';
+
+// Specify key index.
+var key_index = 0;
+
+//======================
+//  MASK PRE-PROCESSING
+//======================
+
+// Convert dictionary to feature collection.
+function dict_to_fc(key, value) {
+  return ee.Feature(null, value);
+}
+
+// Get CONUS bounds.
+var bounds = conus;
+
+// Get summary dict from config.js.
+var keys = Object.keys(config.SUMMARY_DICT_CLIENT);
+print(keys);
+
+var dataset_key = keys[key_index];
+print(dataset_key);
+
+var summary_dict_clientside = {};
+summary_dict_clientside[dataset_key] = config.SUMMARY_DICT_CLIENT[dataset_key];
+
+var summary_dict = ee.Dictionary(summary_dict_clientside);
+
+// Add additional properties to config dictionary.
+summary_dict = summary_dict
+    .map(utils.add_properties(bounds, SCALE_FACTOR, OUT_PROJ));
+
+// Convert to fc.
+var summary_fc = ee.FeatureCollection(
+    summary_dict.map(dict_to_fc).values());
+
+// Filter and mask by type.
+var categorical_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'categorical')
+    .map(utils.categorical_mask);
+var threshold_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'threshold')
+    .map(utils.threshold_mask);
+var fractional_masks = summary_fc
+    .filterMetadata('map_mode', 'equals', 'fractional')
+    .map(utils.fractional_mask);
+
+// Merge processed mask collections.
+var mask_collection = categorical_masks
+    .merge(threshold_masks)
+    .merge(fractional_masks);
+
+// Create final image collection with all masks. 
+var masks = mask_collection
+  .map(function(feature) {return ee.ImageCollection(feature
+      .get('mask_collection'))
+      .copyProperties(feature);
+  });
+
+var masks_filt = ee.ImageCollection(masks
+    .filterMetadata('dataset_id', 'equals', dataset_key).first());
+
+var mask_image = masks_filt
+    .toBands()
+    .unmask()
+    .clip(bounds);
+
+var years = summary_dict_clientside[dataset_key]['years'];
+var scale = summary_dict_clientside[dataset_key]['pixel_size'];
+var map_mode = summary_dict_clientside[dataset_key]['map_mode'];
+
+if (map_mode === 'fractional'){
+  mask_image = mask_image.multiply(100).short();
+  var pyramid_policy = 'mean';
+  
+} else {
+  mask_image = mask_image.toByte();
+  var pyramid_policy = 'mode';
+}
+
+var band_names = ee.List(masks_filt.get('years'))
+    .map(function(year) {
+      return ee.String('mask_').cat(ee.String(year))});
+      
+var PROPERTIES_LIST = ['color', 'dataset_id', 'description',
+                       'map_mode', 'pixel_size', 'projection', 
+                       'system:asset_size', 'system:footprint',
+                       'system:index'];
+
+mask_image = ee.Image(mask_image
+    .rename(band_names)
+    .copyProperties(masks_filt, PROPERTIES_LIST));
+
+Map.addLayer(mask_image, {min: 0, max: 1});
+
+for (var i = 0; i < years.length; i++) {
+  var year = years[i];
+  var asset_name = dataset_key + '_' + year;
+  
+  var export_image = mask_image
+      .select('mask_' + years[i])
+      .setMulti({
+          'year': ee.String(year.toString()),
+          'system:time_start': ee.Date(year+'-01-01').millis(),
+          'system:time_end': ee.Date(year+'-12-31').millis()
+      });
+  
+  Export.image.toAsset({
+      image: export_image,
+      description: asset_name,
+      assetId: OUTPUT_COLLECTION + asset_name,
+      region: bounds,
+      crs: OUT_PROJ,
+      scale: scale,
+      pyramidingPolicy: pyramid_policy,
+      maxPixels: 1e13});
+}
+

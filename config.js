@@ -17,32 +17,32 @@ function set_year_from_id(split_index) {
                     
 // Config dictionary
 var SUMMARY_DICT = {
-    'NLCD_lc_all_forested': {
+    'NLCD_forest_woodywet': {
         'description': 'NLCD landcover product. Selected product classes are ' +
             'deciduous forest (41), evergreen forest (42), mixed forest (43), ' + 
             'and woody wetlands (90).',
-        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2016_REL'),
+        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD'),
         'band': 'landcover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [41, 42, 43, 90],
-        'years': [1992, 2001, 2004, 2006, 2008, 2011, 2013, 2016],
+        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019],
         'year_fn': set_year_from_id(0),
-        'color': '#D2042D'
+        'color': '#cc0000'
     },
-    'NLCD_lc_upland_forest': {
+    'NLCD_forest': {
         'description': 'NLCD landcover product. Selected product classes are ' +
             'deciduous forest (41), evergreen forest (42), and mixed forest (43).',
-        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2016_REL'),
+        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD'),
         'band': 'landcover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [41, 42, 43],
-        'years': [1992, 2001, 2004, 2006, 2008, 2011, 2013, 2016],
+        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019],
         'year_fn': set_year_from_id(0),
-        'color': '#D70040'
+        'color': '#e81213'
     },
-    'NLCD_tcc_10': {
+    'NLCD_canopy_10': {
         'description': 'NLCD percent_tree_cover product. Layer contains all ' +
             'pixels with a value greater than 10% (i.e. tree canopy % within ' +
             'pixel is greater than 10%).',
@@ -53,9 +53,9 @@ var SUMMARY_DICT = {
         'threshold': 10,
         'years': [2011, 2016],
         'year_fn': set_year_from_id(0),
-        'color': '#EE4B2B'
+        'color': '#a61c01'
     },
-    'NLCD_tcc_20': {
+    'NLCD_canopy_20': {
         'description': 'NLCD percent_tree_cover product. Layer contains all ' +
             'pixels with a value greater than 20% (i.e. tree canopy % within ' +
             'pixel is greater than 20%).',
@@ -66,9 +66,9 @@ var SUMMARY_DICT = {
         'threshold': 20,
         'years': [2011, 2016],
         'year_fn': set_year_from_id(0),
-        'color': '#A52A2A'
+        'color': '#c83f24'
     },
-    'NLCD_tcc_60': {
+    'NLCD_canopy_60': {
         'description': 'NLCD percent_tree_cover product. Layer contains all ' +
             'pixels with a value greater than 60% (i.e. tree canopy % within ' +
             'pixel is greater than 60%).',
@@ -79,9 +79,9 @@ var SUMMARY_DICT = {
         'threshold': 60,
         'years': [2011, 2016],
         'year_fn': set_year_from_id(0),
-        'color': '#800020'
+        'color': '#dd7e6b'
     },
-    'NLCD_tcc_80': {
+    'NLCD_canopy_80': {
         'description': 'NLCD percent_tree_cover product. Layer contains all ' +
             'pixels with a value greater than 80% (i.e. tree canopy % within ' +
             'pixel is greater than 80%).',
@@ -92,9 +92,9 @@ var SUMMARY_DICT = {
         'threshold': 80,
         'years': [2011, 2016],
         'year_fn': set_year_from_id(0),
-        'color': '#DE3163'
+        'color': '#e6b8af'
     },
-    'NLCD_tcc_fractional': {
+    'NLCD_canopy_perc': {
         'description': 'NLCD percent_tree_cover product. All pixels included, ' +
             'visualized as a percentage from 0-100%.',
         'source': 
@@ -107,9 +107,9 @@ var SUMMARY_DICT = {
         'map_mode': 'fractional',
         'years': [2011, 2016],
         'year_fn': set_year_from_id(0),
-        'color': '#C41E3A'
+        'color': '#7e0100'
     },
-    'LCMAP_lcpri_trees': {
+    'LCMAP_trees': {
         'description': 'LCMAP LCPRI (Primary Land Cover) product. ' +
             'Selected product class is trees (4)',
         'source': 
@@ -118,11 +118,11 @@ var SUMMARY_DICT = {
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [4],
-        'years': range(1985, 2019),
+        'years': range(1985, 2020),
         'year_fn': set_year_from_id(2),
-        'color': '#CF9FFF'
+        'color': '#B63F7B'
     },
-    'LCMAP_lcpri_trees_and_lcpri_wetland_lcsec_trees': {
+    'LCMAP_trees_woodywet': {
         'description': 'LCMAP primary and secondary. Selected product classes are ' +
             'trees (4) LCPRI or wetland (6) from LCPRI and trees (4) from LCSEC.',
         'source': 
@@ -138,71 +138,61 @@ var SUMMARY_DICT = {
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1],
-        'years': range(1985, 2019),
+        'years': range(1985, 2020),
         'year_fn': set_year_from_id(2),
-        'color': '#CC3CC7'
+        'color': '#C6749F'
     },
-    'LCMS_lc_trees': {
-        'description': 'LCMS landcover product. Selected product class is trees (1).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2020-5'),
+    'LCMS_trees': {
+        'description': 'LCMS landcover product. Selected product class is ' +
+            'Trees (1).',
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1],
-        'years': range(1985, 2020),
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(3),
-        'color': '#0096FF'
+        'color': '#37761D'
     },
-    'LCMS_lc_trees_and_shrubs': {
+    'LCMS_trees_shrubs_mix': {
         'description': 'LCMS landcover product. Selected product classes are ' + 
-            'trees (1) and shrubs (3).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2020-5'),
+            'Trees (1) and Shrubs & Trees Mix (3).',
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1, 3],
-        'years': range(1985, 2020),
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(3),
-        'color': '#0000FF'
+        'color': '#6aa84f'
     },
-    'LCMS_lc_trees_and_barren': {
+    'LCMS_all_trees_mixes': {
         'description': 'LCMS landcover product. Selected product classes are ' +
-            'trees (1) and barren (5).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2020-5'),
+            'Trees (1), Shrubs & Trees Mix (3), Grass/Forb/Herb & Trees Mix (4),' +
+            'and Barren & Trees Mix (5).',
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
-        'classes': [1, 5],
-        'years': range(1985, 2020),
+        'classes': [1, 3, 4, 5],
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(3),
-        'color': '#0096FF'
+        'color': '#284e13'
     },
-    'LCMS_lc_all_trees': {
-        'description': 'LCMS landcover product. Selected product classes are ' +
-            'trees (1), shrubs (3), and barren (5).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2020-5'),
-        'band': 'Land_Cover',
-        'pixel_size': 30,
-        'map_mode': 'categorical',
-        'classes': [1, 3, 5],
-        'years': range(1985, 2020),
-        'year_fn': set_year_from_id(3),
-        'color': '#0047AB'
-    },
-    'LCMS_lu_forest': {
+    'LCMS_forest': {
         'description': 'LCMS landuse product. Selected product class is forest (3).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2020-5'),
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
         'band': 'Land_Use',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [3],
-        'years': range(1985, 2020),
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(3),
-        'color': '#4682B4'
+        'color': '#0F6e5C'
     },
-    'ESRI_lc_trees': {
+    'ESRI_2020_trees': {
         'description': 'ESRI 2020 Global Land Use Land Cover product. Selected ' +
-            'product class is forest (2).',
+            'product class is trees',
         'source': ee.ImageCollection(ee.ImageCollection(
             'projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m')
                 .mosaic()),
@@ -212,91 +202,115 @@ var SUMMARY_DICT = {
         'classes': [2],
         'years': [2020],
         'year_fn': function(image) { return image.set('year', 2020); },
-        'color': '#FF8C00'
+        'color': '#9E5C19'
+    },
+    'ESRI_annual_trees': {
+        'description': 'ESRI Annual Global Land Use Land Cover product. Selected ' +
+            'product class is trees (2).',
+        'source': ee.ImageCollection.fromImages(range(2017, 2022)
+              .map(function(year) {
+                return ee.Image(ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS")
+                    .filter(ee.Filter.calendarRange(year, year + 1, 'year'))
+                    .mosaic())
+                    .set('year', year);
+              })),
+        'band': 'b1',
+        'pixel_size': 10,
+        'map_mode': 'categorical',
+        'classes': [2],
+        'years': range(2017, 2021),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#F50908'
     },
     'ESA_trees': {
         'description': 'ESA WorldCover Landcover product. Selected product ' +
             'class is trees (10).',
-        'source': ee.ImageCollection(
-            ee.ImageCollection('ESA/WorldCover/v100').mosaic()),
+        'source': ee.ImageCollection.fromImages(
+            [
+              ee.ImageCollection('ESA/WorldCover/v100').mosaic().set('year', 2020), 
+              ee.ImageCollection('ESA/WorldCover/v200').mosaic().set('year', 2021)
+            ]),
         'band': 'Map',
         'pixel_size': 10,
         'map_mode': 'categorical',
         'classes': [10],
-        'years': [2020],
-        'year_fn': function(image) { return image.set('year', 2020); },
-        'color': '#FF7F50'
+        'years': [2020, 2021],
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#795AA4'
     },
-    'MODIS_lc_Type1': {
-        'description': 'MODIS LC_Type1 product. Selected forest product ' +
+    'MODIS_1_IGBP': {
+        'description': 'MODIS LC_Type1 product: Annual International Geosphere-Biosphere ' +
+            'Programme (IGBP) classification. Selected forest product ' +
             'classes are (1-5).',
-        'source' : ee.ImageCollection('MODIS/006/MCD12Q1'),
+        'source' : ee.ImageCollection('MODIS/061/MCD12Q1'),
         'band': 'LC_Type1',
         'pixel_size': 500,
         'map_mode': 'categorical',
         'classes': [1, 2, 3, 4, 5],
-        'years': range(2001, 2019),
+        'years': range(2001, 2021),
         'year_fn': set_year_from_id(0),
-        'color': '#009E60'
+        'color': '#083763'
     },
-    'MODIS_lc_Type2': {
-        'description': 'MODIS LC_Type2 product. Selected forest product ' +
-            'classes are (1-5).',
-        'source' : ee.ImageCollection('MODIS/006/MCD12Q1'),
+    'MODIS_2_UMD': {
+        'description': 'MODIS LC_Type2 product: Annual University of Maryland (UMD) ' +
+            'classification. Selected forest product classes are (1-5).',
+        'source' : ee.ImageCollection('MODIS/061/MCD12Q1'),
         'band': 'LC_Type2',
         'pixel_size': 500,
         'map_mode': 'categorical',
         'classes': [1, 2, 3, 4, 5],
-        'years': range(2001, 2019),
+        'years': range(2001, 2021),
         'year_fn': set_year_from_id(0),
-        'color': '#355E3B'
+        'color': '#083763'
     },
-    'MODIS_lc_Type3': {
-        'description': 'MODIS LC_Type3 product. Selected forest product ' +
-            'classes are (5-8).',
-        'source' : ee.ImageCollection('MODIS/006/MCD12Q1'),
+    'MODIS_3_LAI': {
+        'description': 'MODIS LC_Type3 product: Annual Leaf Area Index (LAI) ' +
+            'classification. Selected forest product classes are (5-8).',
+        'source' : ee.ImageCollection('MODIS/061/MCD12Q1'),
         'band': 'LC_Type3',
         'pixel_size': 500,
         'map_mode': 'categorical',
         'classes': [5, 6, 7, 8],
-        'years': range(2001, 2019),
+        'years': range(2001, 2021),
         'year_fn': set_year_from_id(0),
-        'color': '#50C878'
+        'color': '#3c85c6'
     },
-    'MODIS_lc_Type4': {
-        'description': 'MODIS LC_Type4 product. Selected forest product ' +
-            'classes are (1-4).',
-        'source' : ee.ImageCollection('MODIS/006/MCD12Q1'),
+    'MODIS_4_BGC': {
+        'description': 'MODIS LC_Type4 product: Annual BIOME-Biogeochemical Cycles (BGC) ' +
+            'classification. Selected forest product classes are (1-4).',
+        'source' : ee.ImageCollection('MODIS/061/MCD12Q1'),
         'band': 'LC_Type4',
         'pixel_size': 500,
         'map_mode': 'categorical',
         'classes': [1, 2, 3, 4],
-        'years': range(2001, 2019),
+        'years': range(2001, 2021),
         'year_fn': set_year_from_id(0),
-        'color': '#4F7942'
+        'color': '#0000FF'
     },
-    'MODIS_lc_Type5': {
-        'description': 'MODIS LC_Type5 product. Selected forest product ' + 
-            'classes are (1-4).',
-        'source' : ee.ImageCollection('MODIS/006/MCD12Q1'),
+    'MODIS_5_PFT': {
+        'description': 'MODIS LC_Type5 product: Annual Plant Functional Types ' +
+            'classification. Selected forest product classes are (1-4).',
+        'source' : ee.ImageCollection('MODIS/061/MCD12Q1'),
         'band': 'LC_Type5',
         'pixel_size': 500,
         'map_mode': 'categorical',
         'classes': [1, 2, 3, 4],
-        'years': range(2001, 2019),
+        'years': range(2001, 2021),
         'year_fn': set_year_from_id(0),
-        'color': '#228B22'
+        'color': '#9fc5e8'
     },
-    'Hansen_GFC_fractional': {
+    'Hansen_GFC': {
         'description': 'Hansen Global Forest Cover Treecover2000 product for ' +
             'year 2000, visualized as percentage from 0-100. Years 2001-2020 ' +
             'calculated by subtracting respective lossyear data from Treecover2000.',
-        'source': ee.ImageCollection(ee.List.sequence(1, 20).iterate(
+        'source': ee.ImageCollection(ee.List.sequence(1, 21).iterate(
             function(year_index, collection) {
               year_index = ee.Number(year_index);
               var latest_year = ee.ImageCollection(collection).first();
               var loss_mask_this_year = 
-                  ee.Image('UMD/hansen/global_forest_change_2020_v1_8')
+                  ee.Image('UMD/hansen/global_forest_change_2021_v1_9')
                   .select('lossyear')
                   .eq(year_index)
                   .unmask()
@@ -308,7 +322,7 @@ var SUMMARY_DICT = {
               return ee.ImageCollection(this_year).merge(collection);
             },
             ee.ImageCollection(
-                ee.Image('UMD/hansen/global_forest_change_2020_v1_8')
+                ee.Image('UMD/hansen/global_forest_change_2021_v1_9')
                     .toFloat()
                     .divide(100)
                     .set('year', 2000)
@@ -316,11 +330,116 @@ var SUMMARY_DICT = {
         'map_mode': 'fractional',
         'pixel_size': 30,
         'band': 'treecover2000',
-        'years': range(2000, 2020),
+        'years': range(2000, 2021),
         // No-op, source already provides years.
         'year_fn': function(image) { return image; },
-        'color': '#FFD700'
-    }
+        'color': '#F2C231'
+    },
+    'DW_trees_gs_mode': {
+        'description': 'Dynamic World, mode composite for Northern Hemisphere growing season.',
+        'source': ee.ImageCollection(range(2016, 2022)
+            // This .map is JavaScript *not* EE
+            .map(function(year) {
+              return ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                  .filterDate(year + '-06-01', year + '-10-01')
+                  .select('label')
+                  .reduce(ee.Reducer.mode())
+                  .rename('label')
+                  .set('year', year);
+            })),
+        'band': 'label',
+        'pixel_size': 10,
+        'map_mode': 'categorical',
+        'classes': [1],
+        'years': range(2017, 2022),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#CF9FFF'
+    },
+    'DW_trees_annual_mode': {
+        'description': 'Dynamic World, annual model composite.',
+        'source': ee.ImageCollection(range(2016, 2022)
+            // This .map is JavaScript *not* EE
+            .map(function(year) {
+              return ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                  .filterDate(year + '-01-01', (year + 1) + '-01-01')
+                  .select('label')
+                  .reduce(ee.Reducer.mode())
+                  .rename('label')
+                  .set('year', year);
+            })),
+        'band': 'label',
+        'pixel_size': 10,
+        'map_mode': 'categorical',
+        'classes': [1],
+        'years': range(2017, 2022),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#A65FED'
+    },
+    'DW_trees_prob_10': {
+        'description': 'Dynamic World, annual mean. Average probability trees greater than 0.10.',
+        'source': ee.ImageCollection(range(2016, 2022)
+            // This .map is JavaScript *not* EE
+            .map(function(year) {
+              return ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                  .filterDate(year + '-01-01', (year + 1) + '-01-01')
+                  .select('trees')
+                  .reduce(ee.Reducer.mean())
+                  .rename('trees')
+                  .set('year', year);
+            })),
+        'band': 'trees',
+        'pixel_size': 10,
+        'map_mode': 'threshold',
+        'threshold': 0.10,
+        'years': range(2017, 2022),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#5A7510'
+    },
+    'DW_trees_prob_25': {
+        'description': 'Dynamic World, annual mean. Average probability trees greater than 0.25.',
+        'source': ee.ImageCollection(range(2016, 2022)
+            // This .map is JavaScript *not* EE
+            .map(function(year) {
+              return ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                  .filterDate(year + '-01-01', (year + 1) + '-01-01')
+                  .select('trees')
+                  .reduce(ee.Reducer.mean())
+                  .rename('trees')
+                  .set('year', year);
+            })),
+        'band': 'trees',
+        'pixel_size': 10,
+        'map_mode': 'threshold',
+        'threshold': 0.25,
+        'years': range(2017, 2022),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#94B04C'
+    },
+    'DW_trees_prob_50': {
+        'description': 'Dynamic World, annual mean. Average probability trees greater than 0.50.',
+        'source': ee.ImageCollection(range(2016, 2022)
+            // This .map is JavaScript *not* EE
+            .map(function(year) {
+              return ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                  .filterDate(year + '-01-01', (year + 1) + '-01-01')
+                  .select('trees')
+                  .reduce(ee.Reducer.mean())
+                  .rename('trees')
+                  .set('year', year);
+            })),
+        'band': 'trees',
+        'pixel_size': 10,
+        'map_mode': 'threshold',
+        'threshold': 0.50,
+        'years': range(2017, 2022),
+        // No-op, source already provides years.
+        'year_fn': function(image) { return image; },
+        'color': '#C1D48F'
+    },
 };
 
 // Build a server-side dictionary. This involves pre-applying the
@@ -340,7 +459,22 @@ for (var i = 0; i < keys.length; ++i) {
 
 post_extract_dict = ee.Dictionary(post_extract_dict);
 
-var DICT_STATES = {
+var FIA_DICT = ee.Dictionary({
+  'FIA_forest' : {color: '666666'},
+  'FIA_forest_upper' : {color: '666666'},
+  'FIA_forest_lower' : {color: '666666'},
+  'FIA_timberland': {color: 'B7B7B7'},
+  'FIA_timberland_upper': {color: 'B7B7B7'},
+  'FIA_timberland_lower': {color: 'B7B7B7'},
+  'EPA_forested': {color: '000000'},
+  'NRI_grazed': {color: '82016d'},
+  'NRI_notgrazed': {color: 'bd029e'},
+  'NRI_total': {color: 'fb02d3'}
+  
+});
+
+var STATES_DICT = {
+  'CONUS': 'CONUS',
   'ALABAMA': 'AL',
   'ARIZONA':  'AZ',
   'ARKANSAS': 'AR',
@@ -388,9 +522,12 @@ var DICT_STATES = {
   'WASHINGTON': 'WA',
   'WEST_VIRGINIA': 'WV',
   'WISCONSIN': 'WI',
-  'WYOMING': 'WY'
+  'WYOMING': 'WY',
 };
+
 
 // ---------- EXPORTS ------------
 exports.SUMMARY_DICT = post_extract_dict;
-exports.DICT_STATES = DICT_STATES;
+exports.SUMMARY_DICT_CLIENT = SUMMARY_DICT;
+exports.FIA_DICT = FIA_DICT;
+exports.STATES_DICT = STATES_DICT;

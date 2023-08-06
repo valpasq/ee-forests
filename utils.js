@@ -60,20 +60,20 @@ function fractional_mask(feature) {
 
 function add_properties(bounds, scale_factor, out_proj) {
   return function(key, value) {
-    var product_dict = ee.Dictionary(value);
+    var dataset_dict = ee.Dictionary(value);
     
-    var conversion = ee.Number(product_dict.get('pixel_size'))
+    var conversion = ee.Number(dataset_dict.get('pixel_size'))
         .pow(2)
         .multiply(scale_factor);
     
-    var source_col = ee.ImageCollection(product_dict.get('source'))
+    var source_col = ee.ImageCollection(dataset_dict.get('source'))
         .filterBounds(bounds)
-        .filter(ee.Filter.inList('year', product_dict.get('years')))
-        .select([product_dict.get('band')])
+        .filter(ee.Filter.inList('year', dataset_dict.get('years')))
+        .select([dataset_dict.get('band')])
         .map(function(image) {return image.clip(bounds.geometry())});
     
-    return product_dict
-      .set('product_id', key)
+    return dataset_dict
+      .set('dataset_id', key)
       .set('conversion', conversion)
       .set('collection', source_col)
       .set('bounds', bounds)
@@ -86,4 +86,3 @@ exports.categorical_mask = categorical_mask;
 exports.threshold_mask = threshold_mask;
 exports.fractional_mask = fractional_mask;
 exports.add_properties = add_properties;
-
