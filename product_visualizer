@@ -18,9 +18,6 @@ var TABLES_DIR = 'projects/ee-forests/assets/v5-0_merged/v5-0_merged_';
 // Collection with pre-computed forest masks.
 var MASK_COLLECTION_ID = 'projects/sites-project/forest-dataset-comparison/v5-0_datasets';
 
-// Multiply by m2.
-var SCALE_FACTOR = 1;
-
 // Output projection for reductions.
 var OUT_PROJ = 'EPSG:5070';
 
@@ -278,7 +275,7 @@ var select_button = ui.Select({
             format: '####'
         },
         vAxis: {
-            title: 'Area based on pixel counts (sq. meters)',
+            title: 'Area based on pixel counts (km²)',
             titleTextStyle: {italic: false, bold: false},
             gridlines: {color: 'DEDEDE'},
             format: '#####'
