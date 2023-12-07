@@ -21,25 +21,27 @@ var SUMMARY_DICT = {
         'description': 'NLCD landcover product. Selected product classes are ' +
             'deciduous forest (41), evergreen forest (42), mixed forest (43), ' + 
             'and woody wetlands (90).',
-        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD'),
+        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD')
+            .merge(ee.ImageCollection('USGS/NLCD_RELEASES/2021_REL/NLCD')),
         'band': 'landcover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [41, 42, 43, 90],
-        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019],
-        'year_fn': set_year_from_id(0),
+        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019, 2021],
+        'year_fn': set_year_from_id(1),
         'color': '#cc0000'
     },
     'NLCD_forest': {
         'description': 'NLCD landcover product. Selected product classes are ' +
             'deciduous forest (41), evergreen forest (42), and mixed forest (43).',
-        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD'),
+        'source': ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD')
+            .merge(ee.ImageCollection('USGS/NLCD_RELEASES/2021_REL/NLCD')),
         'band': 'landcover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [41, 42, 43],
-        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019],
-        'year_fn': set_year_from_id(0),
+        'years': [2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019, 2021],
+        'year_fn': set_year_from_id(1),
         'color': '#e81213'
     },
     'NLCD_canopy_10': {
@@ -118,7 +120,7 @@ var SUMMARY_DICT = {
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [4],
-        'years': range(1985, 2020),
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(2),
         'color': '#B63F7B'
     },
@@ -138,31 +140,31 @@ var SUMMARY_DICT = {
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1],
-        'years': range(1985, 2020),
+        'years': range(1985, 2021),
         'year_fn': set_year_from_id(2),
         'color': '#C6749F'
     },
     'LCMS_trees': {
         'description': 'LCMS landcover product. Selected product class is ' +
             'Trees (1).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2022-8'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1],
-        'years': range(1985, 2021),
+        'years': range(1985, 2022),
         'year_fn': set_year_from_id(3),
         'color': '#37761D'
     },
     'LCMS_trees_shrubs_mix': {
         'description': 'LCMS landcover product. Selected product classes are ' + 
             'Trees (1) and Shrubs & Trees Mix (3).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2022-8'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1, 3],
-        'years': range(1985, 2021),
+        'years': range(1985, 2022),
         'year_fn': set_year_from_id(3),
         'color': '#6aa84f'
     },
@@ -170,23 +172,23 @@ var SUMMARY_DICT = {
         'description': 'LCMS landcover product. Selected product classes are ' +
             'Trees (1), Shrubs & Trees Mix (3), Grass/Forb/Herb & Trees Mix (4),' +
             'and Barren & Trees Mix (5).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2022-8'),
         'band': 'Land_Cover',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [1, 3, 4, 5],
-        'years': range(1985, 2021),
+        'years': range(1985, 2022),
         'year_fn': set_year_from_id(3),
         'color': '#284e13'
     },
     'LCMS_forest': {
         'description': 'LCMS landuse product. Selected product class is forest (3).',
-        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2021-7'),
+        'source': ee.ImageCollection('USFS/GTAC/LCMS/v2022-8'),
         'band': 'Land_Use',
         'pixel_size': 30,
         'map_mode': 'categorical',
         'classes': [3],
-        'years': range(1985, 2021),
+        'years': range(1985, 2022),
         'year_fn': set_year_from_id(3),
         'color': '#0F6e5C'
     },
@@ -218,7 +220,7 @@ var SUMMARY_DICT = {
         'pixel_size': 10,
         'map_mode': 'categorical',
         'classes': [2],
-        'years': range(2017, 2021),
+        'years': range(2017, 2022),
         // No-op, source already provides years.
         'year_fn': function(image) { return image; },
         'color': '#F50908'
@@ -322,7 +324,7 @@ var SUMMARY_DICT = {
               return ee.ImageCollection(this_year).merge(collection);
             },
             ee.ImageCollection(
-                ee.Image('UMD/hansen/global_forest_change_2021_v1_9')
+                ee.Image('UMD/hansen/global_forest_change_2022_v1_10')
                     .toFloat()
                     .divide(100)
                     .set('year', 2000)
@@ -330,7 +332,7 @@ var SUMMARY_DICT = {
         'map_mode': 'fractional',
         'pixel_size': 30,
         'band': 'treecover2000',
-        'years': range(2000, 2021),
+        'years': range(2000, 2022),
         // No-op, source already provides years.
         'year_fn': function(image) { return image; },
         'color': '#F2C231'
