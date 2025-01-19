@@ -6,17 +6,16 @@
 //  CONFIG
 //================== 
 
-var CITATION_LABEL = 'Research and UI Development by Ben Glass and Valerie Pasquarella. ' + 
-    'Version 5.0, July 2023.';
+var CITATION_LABEL = 'Version 5.1, October 2024.';
 
 var utils = require('users/valeriepasquarella/ee-forests:utils.js');
 var config = require('users/valeriepasquarella/ee-forests:config.js');
 
 // Assets directory with tables by state.
-var TABLES_DIR = 'projects/ee-forests/assets/v5-0_merged/v5-0_merged_';
+var TABLES_DIR = 'projects/ee-forests/assets/v5-1_merged/v5-1_merged_';
 
 // Collection with pre-computed forest masks.
-var MASK_COLLECTION_ID = 'projects/sites-project/forest-dataset-comparison/v5-0_datasets';
+var MASK_COLLECTION_ID = 'projects/sites-project/forest-dataset-comparison/v5-1_datasets';
 
 // Output projection for reductions.
 var OUT_PROJ = 'EPSG:5070';
@@ -205,7 +204,7 @@ function years_dict(start_inc, end_inc) {
   }
   return out;
 }
-var chart_xlabels = years_dict(1985, 2020);
+var chart_xlabels = years_dict(1985, 2022);
 
 var chart_select_panel = ui.Panel({
   layout: ui.Panel.Layout.flow('horizontal')
@@ -240,7 +239,7 @@ var select_button = ui.Select({
       var bounds = ee.FeatureCollection(TIGER)
         .filter(ee.Filter.inList('STUSPS', conus))
       
-      var FCP_table = ee.FeatureCollection(TABLES_DIR + 'CONUS_noFIA')
+      var FCP_table = ee.FeatureCollection(TABLES_DIR + 'CONUS')
         .sort('dataset_id');
       
       LeftMap.setCenter(-98.55653, 39.80988, 4);
@@ -272,7 +271,11 @@ var select_button = ui.Select({
             ticks: chart_xlabels,
             titleTextStyle: {italic: false, bold: false},
             gridlines: {color: 'DEDEDE'},
-            format: '####'
+            format: '####',
+            viewWindow: {
+                min: 1985,
+                max: 2022
+            },
         },
         vAxis: {
             title: 'Area based on pixel counts (km²)',

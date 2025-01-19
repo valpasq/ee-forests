@@ -307,12 +307,12 @@ var SUMMARY_DICT = {
         'description': 'Hansen Global Forest Cover Treecover2000 product for ' +
             'year 2000, visualized as percentage from 0-100. Years 2001-2020 ' +
             'calculated by subtracting respective lossyear data from Treecover2000.',
-        'source': ee.ImageCollection(ee.List.sequence(1, 21).iterate(
+        'source': ee.ImageCollection(ee.List.sequence(1, 23).iterate(
             function(year_index, collection) {
               year_index = ee.Number(year_index);
               var latest_year = ee.ImageCollection(collection).first();
               var loss_mask_this_year = 
-                  ee.Image('UMD/hansen/global_forest_change_2021_v1_9')
+                  ee.Image('UMD/hansen/global_forest_change_2022_v1_10')
                   .select('lossyear')
                   .eq(year_index)
                   .unmask()

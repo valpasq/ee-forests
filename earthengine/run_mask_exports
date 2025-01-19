@@ -8,7 +8,7 @@ var conus = ee.FeatureCollection("projects/ee-forests/assets/LSIB_SIMPLE_2017_CO
 //  CONFIG
 //================== 
 
-var OUTPUT_COLLECTION = 'projects/sites-project/forest-dataset-comparison/v5-0_datasets/';
+var OUTPUT_COLLECTION = 'projects/sites-project/forest-dataset-comparison/v5-1_datasets/';
 
 var utils = require('users/valeriepasquarella/ee-forests:utils.js');
 var config = require('users/valeriepasquarella/ee-forests:config.js');
@@ -20,7 +20,7 @@ var SCALE_FACTOR = 1;
 var OUT_PROJ = 'EPSG:5070';
 
 // Specify key index.
-var key_index = 0;
+var key_index = 17;
 
 //======================
 //  MASK PRE-PROCESSING
